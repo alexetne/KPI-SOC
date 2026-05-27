@@ -1,6 +1,15 @@
 import axios from "axios";
 
-import type { DynamicColumn, DynamicRow, DynamicTable, KpiDefinition, KpiResult, RowQuery } from "../types/api";
+import type {
+  DynamicColumn,
+  DynamicRow,
+  DynamicTable,
+  KpiDefinition,
+  KpiResult,
+  RowQuery,
+  SekoiaImportPayload,
+  SekoiaImportResult,
+} from "../types/api";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api/v1",
@@ -77,5 +86,10 @@ export async function queryKpi(payload: {
   filters?: Record<string, unknown>;
 }): Promise<KpiResult> {
   const { data } = await api.post<KpiResult>("/kpis/query", payload);
+  return data;
+}
+
+export async function importSekoiaAlerts(payload: SekoiaImportPayload): Promise<SekoiaImportResult> {
+  const { data } = await api.post<SekoiaImportResult>("/integrations/sekoia/import-alerts", payload);
   return data;
 }

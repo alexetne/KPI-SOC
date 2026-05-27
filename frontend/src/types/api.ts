@@ -61,3 +61,19 @@ export interface KpiResult {
   value: unknown;
   series: Array<{ label: string; value: number }>;
 }
+
+export interface SekoiaImportPayload {
+  table_id: string;
+  api_key: string;
+  base_url: string;
+  limit: number;
+  query_params: Record<string, string>;
+  mapping: Record<string, string>;
+}
+
+export interface SekoiaImportResult {
+  imported: number;
+  skipped: number;
+  endpoint: string;
+  sample: Array<Record<string, unknown>>;
+}

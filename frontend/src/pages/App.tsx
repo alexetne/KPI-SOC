@@ -7,6 +7,7 @@ import {
   RefreshCw,
   ShieldAlert,
   Trash2,
+  Wand2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
@@ -21,10 +22,19 @@ import {
   listKpiDefinitions,
   listRows,
   listTables,
+  importSekoiaAlerts,
   queryKpi,
   seedDemo,
 } from "../services/api";
-import type { ColumnType, DynamicColumn, DynamicRow, DynamicTable, KpiDefinition, KpiResult } from "../types/api";
+import type {
+  ColumnType,
+  DynamicColumn,
+  DynamicRow,
+  DynamicTable,
+  KpiDefinition,
+  KpiResult,
+  SekoiaImportResult,
+} from "../types/api";
 
 const columnTypes: ColumnType[] = ["text", "number", "boolean", "date", "datetime", "enum", "severity", "endpoint", "status"];
 const defaultMetricKeys = [
@@ -36,8 +46,27 @@ const defaultMetricKeys = [
   "alerts_over_time",
   "mean_time_to_close",
 ];
+const defaultSekoiaMapping: Record<string, string> = {
+  alert_name: "title",
+  endpoint: "entity.name",
+  severity: "urgency.display",
+  status: "status.name",
+  source: "source",
+  analyst: "assignee_uuid",
+  created_date: "created_at",
+  closed_date: "updated_at",
+};
+type AppView = "table" | "kpi" | "weather" | "config";
+
+const viewLabels: Record<AppView, string> = {
+  table: "Table",
+  kpi: "KPI",
+  weather: "Meteo incident",
+  config: "Configuration",
+};
 
 export function App() {
+  const [activeView, setActiveView] = useState<AppView>("table");
   const [tables, setTables] = useState<DynamicTable[]>([]);
   const [activeTable, setActiveTable] = useState<DynamicTable | null>(null);
   const [rows, setRows] = useState<DynamicRow[]>([]);
@@ -54,6 +83,14 @@ export function App() {
     choices: "",
   });
   const [rowDraft, setRowDraft] = useState<Record<string, string>>({});
+  const [sekoiaConfig, setSekoiaConfig] = useState({
+    baseUrl: "https://api.sekoia.io",
+    apiKey: "",
+    limit: 50,
+    queryParams: "stix=false\ncases=false",
+    mapping: defaultSekoiaMapping,
+  });
+  const [importResult, setImportResult] = useState<SekoiaImportResult | null>(null);
 
   const bootstrap = useCallback(async () => {
     setLoading(true);
@@ -176,8 +213,39 @@ export function App() {
     await refreshRows(activeTable.id);
   }
 
+  async function handleImportSekoia() {
+    if (!activeTable) return;
+    setError(null);
+    setImportResult(null);
+    try {
+      const result = await importSekoiaAlerts({
+        table_id: activeTable.id,
+        api_key: sekoiaConfig.apiKey,
+        base_url: sekoiaConfig.baseUrl,
+        limit: sekoiaConfig.limit,
+        query_params: parseQueryParams(sekoiaConfig.queryParams),
+        mapping: sekoiaConfig.mapping,
+      });
+      setImportResult(result);
+      await refreshRows(activeTable.id);
+    } catch (err) {
+      setError(readError(err));
+    }
+  }
+
+  function applySekoiaPreset() {
+    if (!activeTable) return;
+    setSekoiaConfig((current) => ({
+      ...current,
+      mapping: Object.fromEntries(
+        activeTable.columns.map((column) => [column.key, current.mapping[column.key] ?? defaultSekoiaMapping[column.key] ?? ""]),
+      ),
+    }));
+  }
+
   const activeColumnChoices = activeTable?.columns ?? [];
   const tableCountLabel = useMemo(() => `${tables.length} table${tables.length > 1 ? "s" : ""}`, [tables.length]);
+  const weather = useMemo(() => buildIncidentWeather(kpis), [kpis]);
 
   return (
     <main className="app-shell">
@@ -190,14 +258,33 @@ export function App() {
           </div>
         </div>
         <nav>
-          <button className="nav-item active" type="button">
+          <button
+            className={`nav-item ${activeView === "table" ? "active" : ""}`}
+            type="button"
+            onClick={() => setActiveView("table")}
+          >
             <Database size={18} /> Table
           </button>
-          <button className="nav-item" type="button">
+          <button
+            className={`nav-item ${activeView === "kpi" ? "active" : ""}`}
+            type="button"
+            onClick={() => setActiveView("kpi")}
+          >
             <BarChart3 size={18} /> KPI
           </button>
-          <button className="nav-item" type="button">
+          <button
+            className={`nav-item ${activeView === "weather" ? "active" : ""}`}
+            type="button"
+            onClick={() => setActiveView("weather")}
+          >
             <Activity size={18} /> Météo
+          </button>
+          <button
+            className={`nav-item ${activeView === "config" ? "active" : ""}`}
+            type="button"
+            onClick={() => setActiveView("config")}
+          >
+            <Wand2 size={18} /> Config
           </button>
         </nav>
       </aside>
@@ -206,7 +293,7 @@ export function App() {
         <header className="topbar">
           <div>
             <p className="eyebrow">{tableCountLabel}</p>
-            <h1>{activeTable?.label ?? "Socle incident & KPI"}</h1>
+            <h1>{activeTable ? `${viewLabels[activeView]} · ${activeTable.label}` : "Socle incident & KPI"}</h1>
           </div>
           <div className="actions">
             <button className="ghost" type="button" onClick={() => void bootstrap()}>
@@ -220,7 +307,83 @@ export function App() {
 
         {error && <div className="alert">{error}</div>}
 
-        {activeTable && (
+        {activeView === "config" && activeTable && (
+          <section className="config-section">
+            <header>
+              <div>
+                <p className="eyebrow">Configuration</p>
+                <h2>Mapping Sekoia vers table d'alertes</h2>
+              </div>
+              <button className="ghost" type="button" onClick={applySekoiaPreset}>
+                <Wand2 size={18} /> Preset
+              </button>
+            </header>
+            <div className="config-grid">
+              <label>
+                <span>URL API</span>
+                <input
+                  value={sekoiaConfig.baseUrl}
+                  onChange={(event) => setSekoiaConfig((current) => ({ ...current, baseUrl: event.target.value }))}
+                />
+              </label>
+              <label>
+                <span>Token API</span>
+                <input
+                  type="password"
+                  placeholder="Bearer token Sekoia"
+                  value={sekoiaConfig.apiKey}
+                  onChange={(event) => setSekoiaConfig((current) => ({ ...current, apiKey: event.target.value }))}
+                />
+              </label>
+              <label>
+                <span>Limite</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={sekoiaConfig.limit}
+                  onChange={(event) => setSekoiaConfig((current) => ({ ...current, limit: Number(event.target.value) }))}
+                />
+              </label>
+              <label className="wide">
+                <span>Parametres query</span>
+                <textarea
+                  value={sekoiaConfig.queryParams}
+                  onChange={(event) => setSekoiaConfig((current) => ({ ...current, queryParams: event.target.value }))}
+                />
+              </label>
+            </div>
+            <div className="mapping-grid">
+              {activeTable.columns.map((column) => (
+                <label key={column.id}>
+                  <span>{column.label}</span>
+                  <input
+                    placeholder="ex: title, status.name, entity.name"
+                    value={sekoiaConfig.mapping[column.key] ?? ""}
+                    onChange={(event) =>
+                      setSekoiaConfig((current) => ({
+                        ...current,
+                        mapping: { ...current.mapping, [column.key]: event.target.value },
+                      }))
+                    }
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="config-footer">
+              <button className="primary" type="button" onClick={() => void handleImportSekoia()}>
+                <RefreshCw size={18} /> Recuperer alertes
+              </button>
+              {importResult && (
+                <span>
+                  {importResult.imported} importees, {importResult.skipped} ignorees depuis {importResult.endpoint}
+                </span>
+              )}
+            </div>
+          </section>
+        )}
+
+        {activeView === "table" && activeTable && (
           <section className="control-band">
             <div className="field-group wide">
               <label htmlFor="table-select">Table</label>
@@ -275,13 +438,52 @@ export function App() {
           </section>
         )}
 
-        <section className="kpi-grid">
-          {kpis.map((kpi) => (
-            <KpiPanel key={kpi.metric_key} result={kpi} />
-          ))}
-        </section>
+        {activeView === "kpi" && (
+          <>
+            <section className="kpi-grid">
+              {kpis.map((kpi) => (
+                <KpiPanel key={kpi.metric_key} result={kpi} />
+              ))}
+            </section>
+            <section className="tool-panel">
+              <header>
+                <h2>Catalogue KPI</h2>
+                <span>{kpiDefinitions.length} indicateurs</span>
+              </header>
+              <div className="definition-grid">
+                {kpiDefinitions.map((definition) => (
+                  <article className="definition-item" key={definition.key}>
+                    <strong>{definition.label}</strong>
+                    <span>{definition.description}</span>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </>
+        )}
 
-        {activeTable && (
+        {activeView === "weather" && (
+          <section className="weather-panel">
+            <header>
+              <div>
+                <p className="eyebrow">Meteo incident</p>
+                <h2>{weather.label}</h2>
+              </div>
+              <strong className={`weather-score ${weather.level}`}>{weather.score}/100</strong>
+            </header>
+            <p>{weather.summary}</p>
+            <div className="weather-grid">
+              {weather.signals.map((signal) => (
+                <article key={signal.label}>
+                  <span>{signal.label}</span>
+                  <strong>{signal.value}</strong>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {activeView === "table" && activeTable && (
           <section className="editor-grid">
             <form className="tool-panel" onSubmit={handleCreateColumn}>
               <header>
@@ -364,16 +566,25 @@ export function App() {
           </section>
         )}
 
-        <section className="data-zone">
-          {loading && <div className="empty-state">Chargement...</div>}
-          {!loading && activeTable && <DataGrid table={activeTable} rows={rows} onDeleteRow={(id) => void handleDeleteRow(id)} />}
-          {!loading && !activeTable && (
-            <div className="empty-state">
-              <h2>Aucune table configuree</h2>
-              <p>Seed SOC cree une table d'alertes, des colonnes typees et un jeu de donnees de demonstration.</p>
-            </div>
-          )}
-        </section>
+        {activeView === "table" && (
+          <section className="data-zone">
+            {loading && <div className="empty-state">Chargement...</div>}
+            {!loading && activeTable && <DataGrid table={activeTable} rows={rows} onDeleteRow={(id) => void handleDeleteRow(id)} />}
+            {!loading && !activeTable && (
+              <div className="empty-state">
+                <h2>Aucune table configuree</h2>
+                <p>Seed SOC cree une table d'alertes, des colonnes typees et un jeu de donnees de demonstration.</p>
+              </div>
+            )}
+          </section>
+        )}
+
+        {activeView !== "table" && !activeTable && !loading && (
+          <div className="empty-state">
+            <h2>Aucune table configuree</h2>
+            <p>Seed SOC est necessaire avant d'utiliser cette section.</p>
+          </div>
+        )}
       </section>
     </main>
   );
@@ -444,4 +655,51 @@ function readError(error: unknown) {
     return String((error as { message: unknown }).message);
   }
   return "Une erreur est survenue";
+}
+
+function parseQueryParams(value: string) {
+  return Object.fromEntries(
+    value
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [key, ...rest] = line.split("=");
+        return [key.trim(), rest.join("=").trim()];
+      })
+      .filter(([key]) => key),
+  );
+}
+
+function buildIncidentWeather(kpis: KpiResult[]) {
+  const byKey = Object.fromEntries(kpis.map((kpi) => [kpi.metric_key, kpi]));
+  const alertCount = Number(byKey.alert_count?.value ?? 0);
+  const conversionRate = Number(byKey.conversion_rate?.value ?? 0);
+  const meanCloseHours = Number(byKey.mean_time_to_close?.value ?? 0);
+  const criticalCount =
+    byKey.severity_distribution?.series.find((item) => item.label.toLowerCase() === "critical")?.value ?? 0;
+  const highCount = byKey.severity_distribution?.series.find((item) => item.label.toLowerCase() === "high")?.value ?? 0;
+
+  const score = Math.min(100, Math.round(alertCount * 1.4 + conversionRate * 0.35 + criticalCount * 12 + highCount * 6));
+  const level = score >= 75 ? "storm" : score >= 45 ? "watch" : "clear";
+  const label = level === "storm" ? "Orage incident" : level === "watch" ? "Vigilance SOC" : "Temps calme";
+  const summary =
+    level === "storm"
+      ? "La pression operationnelle est elevee: prioriser les alertes critiques et la conversion en incidents."
+      : level === "watch"
+        ? "Activite notable: surveiller les endpoints les plus bruyants et les statuts en cours."
+        : "Activite sous controle: le volume et la criticite restent contenus.";
+
+  return {
+    label,
+    level,
+    score,
+    summary,
+    signals: [
+      { label: "Alertes", value: alertCount },
+      { label: "Conversion", value: `${conversionRate}%` },
+      { label: "Critiques", value: criticalCount },
+      { label: "Cloture moy.", value: `${meanCloseHours}h` },
+    ],
+  };
 }

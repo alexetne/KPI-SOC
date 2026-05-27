@@ -62,7 +62,25 @@ Services par defaut:
 - Requetes directes avec recherche globale, filtre colonne/valeur et pagination.
 - Catalogue de KPI mappables sur les colonnes.
 - Panneaux KPI: volume, conversion, endpoint le plus bruyant, severite, statut, tendance, temps moyen de cloture.
+- Configuration d'import Sekoia: mapping des champs de `/v1/sic/alerts` vers les colonnes de la table, avec conservation de la saisie manuelle.
 - OpenAPI expose sous `/docs` et `/api/v1/openapi.json`.
+
+## Mapping Sekoia
+
+La section `Configuration` de l'interface permet de renseigner:
+
+- l'URL API Sekoia, par defaut `https://api.sekoia.io`;
+- un token API, envoye au backend uniquement au moment de l'import;
+- une limite et des parametres query;
+- le chemin JSON source pour chaque colonne du tableau.
+
+Exemples de chemins utiles pour `/v1/sic/alerts`:
+
+- `title` -> nom de l'alerte;
+- `entity.name` -> endpoint ou entite;
+- `urgency.display` -> severite;
+- `status.name` -> statut;
+- `created_at` -> date de creation.
 
 ## Prochaines etapes produit
 

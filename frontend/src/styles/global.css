@@ -18,7 +18,8 @@ button {
 }
 
 input,
-select {
+select,
+textarea {
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
@@ -27,6 +28,11 @@ select {
   min-height: 38px;
   padding: 8px 10px;
   width: 100%;
+}
+
+textarea {
+  min-height: 84px;
+  resize: vertical;
 }
 
 .app-shell {
@@ -186,6 +192,58 @@ nav {
   padding: 14px;
 }
 
+.config-section {
+  background: #ffffff;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 16px;
+}
+
+.config-section header,
+.config-footer {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.config-section h2 {
+  font-size: 18px;
+  margin: 4px 0 0;
+}
+
+.config-grid,
+.mapping-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mapping-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.config-grid label,
+.mapping-grid label {
+  display: grid;
+  gap: 6px;
+}
+
+.config-grid span,
+.mapping-grid span,
+.config-footer span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.config-grid .wide {
+  grid-column: span 3;
+}
+
 .field-group {
   display: grid;
   gap: 6px;
@@ -236,6 +294,99 @@ nav {
 .tool-panel header span {
   color: #64748b;
   font-size: 13px;
+}
+
+.definition-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.definition-item {
+  background: #f8fafc;
+  border: 1px solid #e6edf5;
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.definition-item span {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.weather-panel {
+  background: #ffffff;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+}
+
+.weather-panel header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.weather-panel h2 {
+  font-size: 24px;
+  margin: 4px 0 0;
+}
+
+.weather-panel p {
+  color: #475569;
+  margin: 0;
+}
+
+.weather-score {
+  border-radius: 8px;
+  color: #ffffff;
+  min-width: 92px;
+  padding: 14px;
+  text-align: center;
+}
+
+.weather-score.clear {
+  background: #059669;
+}
+
+.weather-score.watch {
+  background: #d97706;
+}
+
+.weather-score.storm {
+  background: #dc2626;
+}
+
+.weather-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.weather-grid article {
+  background: #f8fafc;
+  border: 1px solid #e6edf5;
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+}
+
+.weather-grid span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.weather-grid strong {
+  font-size: 22px;
 }
 
 .column-list {
@@ -421,8 +572,16 @@ th {
   }
 
   .control-band,
-  .editor-grid {
+  .editor-grid,
+  .config-grid,
+  .mapping-grid,
+  .definition-grid,
+  .weather-grid {
     grid-template-columns: 1fr;
+  }
+
+  .config-grid .wide {
+    grid-column: auto;
   }
 }
 
