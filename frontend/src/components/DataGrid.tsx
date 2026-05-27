@@ -1,4 +1,4 @@
-import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
+import { flexRender, getCoreRowModel, useReactTable, type CellContext, type ColumnDef } from "@tanstack/react-table";
 import { Trash2 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -14,22 +14,27 @@ export function DataGrid({ table, rows, onDeleteRow }: Props) {
   const columns = useMemo<ColumnDef<DynamicRow>[]>(
     () => [
       ...table.columns.map((column) => ({
-          accessorFn: (row: DynamicRow) => row.values[column.key],
-          id: column.key,
-          header: column.label,
-          cell: (info: { getValue: () => unknown }) => formatValue(info.getValue()),
-        })),
+        accessorFn: (row: DynamicRow) => row.values[column.key],
+        id: column.key,
+        header: column.label,
+        cell: (info: CellContext<DynamicRow, unknown>) => formatValue(info.getValue()),
+      })),
       {
         id: "actions",
         header: "",
-        cell: ({ row }) => (
-          <button className="icon-button danger" type="button" title="Supprimer" onClick={() => onDeleteRow(row.original.id)}>
+        cell: ({ row }: CellContext<DynamicRow, unknown>) => (
+          <button
+            className="icon-button danger"
+            type="button"
+            title="Supprimer"
+            onClick={() => onDeleteRow(row.original.id)}
+          >
             <Trash2 size={16} />
           </button>
         ),
       },
     ],
-    [table.columns],
+    [onDeleteRow, table.columns],
   );
 
   const instance = useReactTable({

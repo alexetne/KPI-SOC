@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -124,8 +125,8 @@ def list_rows(
     q: str | None = None,
     column: str | None = None,
     value: str | None = None,
-    limit: int = 200,
-    offset: int = 0,
+    limit: int = Query(default=200, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ) -> list[DynamicRow]:
     statement = select(DynamicRow).where(DynamicRow.table_id == table_id).order_by(DynamicRow.created_at.desc())
@@ -135,7 +136,7 @@ def list_rows(
         rows = [row for row in rows if needle in " ".join(str(item).lower() for item in row.values.values())]
     if column and value is not None:
         rows = [row for row in rows if str(row.values.get(column, "")).lower() == value.lower()]
-    return rows[offset : offset + min(limit, 1000)]
+    return rows[offset : offset + limit]
 
 
 @router.post("/{table_id}/rows", response_model=DynamicRowRead, status_code=status.HTTP_201_CREATED)

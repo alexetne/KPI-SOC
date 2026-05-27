@@ -53,9 +53,22 @@ Services par defaut:
 
 ## Roadmap initiale
 
-1. Table dynamique avec colonnes typees et lignes JSONB.
-2. Requetes directes avec filtres simples.
-3. Catalogue de KPI mappables sur les colonnes.
-4. Dashboards facon Grafana avec panneaux configurables.
-5. Ordonnancement de rapports periodiques.
-6. Connecteurs entrants/sortants via OpenAPI et webhooks.
+## Fonctionnalites MVP disponibles
+
+- Seed SOC via l'interface ou `POST /api/v1/demo/seed`.
+- Table dynamique avec colonnes typees et lignes JSONB.
+- Ajout/suppression de colonnes avec nettoyage des valeurs associees.
+- Ajout/suppression de lignes depuis l'interface.
+- Requetes directes avec recherche globale, filtre colonne/valeur et pagination.
+- Catalogue de KPI mappables sur les colonnes.
+- Panneaux KPI: volume, conversion, endpoint le plus bruyant, severite, statut, tendance, temps moyen de cloture.
+- OpenAPI expose sous `/docs` et `/api/v1/openapi.json`.
+
+## Prochaines etapes produit
+
+1. Edition inline des cellules.
+2. Sauvegarde de vues filtrees.
+3. Dashboards persistants configurables par drag-and-drop.
+4. Ordonnancement de rapports periodiques.
+5. Connecteurs entrants/sortants via OpenAPI et webhooks.
+6. Authentification, RBAC et audit trail.
